@@ -1,0 +1,100 @@
+query CommitStats(
+  $numCommits: Int!
+  $nextPageCursor: String
+  $since: GitTimestamp
+  $until: GitTimestamp
+) {
+  rateLimit {
+    cost
+    limit
+    nodeCount
+    remaining
+    resetAt
+    used
+  }
+
+  repository(owner: "NixOS", name: "Nixpkgs") {
+    ref(qualifiedName: "refs/heads/master") {
+      target {
+        __typename
+        oid
+        ... on Commit {
+          history(
+            first: $numCommits
+            after: $nextPageCursor
+            since: $since
+            until: $until
+          ) {
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+            nodes {
+              oid
+              authors(first: 10) {
+                nodes {
+                  date
+                  email
+                  name
+                  user {
+                    email
+                    login
+                    name
+                  }
+                }
+              }
+              authoredByCommitter
+              authoredDate
+              associatedPullRequests(first: 20) {
+                nodes {
+                  author {
+                    __typename
+                    login
+                  }
+                  createdAt
+                  mergedAt
+                  mergedBy {
+                    __typename
+                    login
+                  }
+                  number
+                  reviews(first: 100) {
+                    pageInfo {
+                      hasNextPage
+                      endCursor
+                    }
+                    nodes {
+                      author {
+                        __typename
+                        login
+                      }
+                      authorCanPushToRepository
+                      createdAt
+                      publishedAt
+                      state
+                      submittedAt
+                    }
+                  }
+                  state
+                  title
+                }
+              }
+              committedDate
+              committer {
+                date
+                email
+                name
+                user {
+                  email
+                  login
+                  name
+                }
+              }
+              messageHeadline
+            }
+          }
+        }
+      }
+    }
+  }
+}
