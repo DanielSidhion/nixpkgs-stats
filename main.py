@@ -1,3 +1,4 @@
+import glob
 import os
 import json
 from collections import Counter
@@ -17,63 +18,61 @@ review_comments_count = []
 approved_prs = 0  # PRs with approvals from others
 self_approved_prs = 0  # Self-approved PRs
 
-for filename in os.listdir(data_directory):
-    if filename.endswith(".json"):
-        file_path = os.path.join(data_directory, filename)
-        with open(file_path, "r") as file:
-            try:
-                json_data = json.load(file)
-                for commit in json_data:
-                    authors = commit.get("authors", {}).get("nodes", [])
-                    for author in authors:
-                        author_name = author.get("name")
-                        if author_name:
-                            all_authors[author_name] = (
-                                all_authors.get(author_name, 0) + 1
-                            )
+def get_login(value):
+    if value is None:
+        return None
+    return value.get("login")
 
-                    commit_date = commit.get("committedDate")
-                    if commit_date:
-                        commit_dates.append(datetime.fromisoformat(commit_date).date())
+for file_path in glob.glob(os.path.join(data_directory, "*.json")):
+    json_data = None
 
-                    prs = commit.get("associatedPullRequests", {}).get("nodes", [])
-                    for pr in prs:
-                        if isinstance(pr, dict):
-                            author_data = pr.get("author")
-                            if author_data:
-                                pr_author = author_data.get("login")
-                                if pr_author:
-                                    all_prs_per_author[pr_author] = (
-                                        all_prs_per_author.get(pr_author, 0) + 1
-                                    )
+    with open(file_path, "r") as file:
+        try:
+            json_data = json.load(file)
+        except (json.JSONDecodeError, KeyError) as e:
+            print(f"Error parsing {file_path}: {e}")
+            continue
+    
+    if json_data is None:
+        print(f"Parsed {file_path}, but got nothing.")
+        continue
+        
+    for commit in json_data:
+        authors = commit.get("authors", {}).get("nodes", [])
+        for author in authors:
+            author_name = author.get("name")
+            if author_name:
+                all_authors[author_name] = all_authors.get(author_name, 0) + 1
 
-                                    status = pr.get("state")
-                                    if status:
-                                        status_distribution[status] += 1
+        commit_date = commit.get("committedDate")
+        if commit_date:
+            commit_dates.append(datetime.fromisoformat(commit_date).date())
 
-                                        if status == "MERGED":
-                                            created_at = datetime.fromisoformat(
-                                                pr.get("createdAt")
-                                            )
-                                            merged_at = datetime.fromisoformat(
-                                                pr.get("mergedAt")
-                                            )
-                                            merge_time.append(
-                                                (merged_at - created_at).total_seconds()
-                                                / 3600
-                                            )
+        prs = commit.get("associatedPullRequests", {}).get("nodes", [])
+        prs = filter(lambda pr: isinstance(pr, dict), prs)
+        for pr in prs:
+            pr_author = get_login(pr.get("author"))
+            merged_by = get_login(pr.get("mergedBy"))
+            status = pr.get("state")
+            if not pr_author or not merged_by or not status:
+                # There are a bunch of cases like this, so we'll just skip instead of printing each case. Must fix the raw data later.
+                continue
 
-                                        # Check if the PR has reviews; if not, consider it self-approved
-                                        review_comments = pr.get("reviews", {}).get(
-                                            "nodes", []
-                                        )
-                                        if not review_comments:
-                                            self_approved_prs += 1
-                                        else:
-                                            approved_prs += 1
+            all_prs_per_author[pr_author] = all_prs_per_author.get(pr_author, 0) + 1
 
-            except (json.JSONDecodeError, KeyError) as e:
-                print(f"Error parsing {filename}: {e}")
+            status_distribution[status] += 1
+            if status == "MERGED":
+                created_at = datetime.fromisoformat(pr.get("createdAt"))
+                merged_at = datetime.fromisoformat(pr.get("mergedAt"))
+                merge_time.append((merged_at - created_at).total_seconds() / 3600)
+            
+            # Only consider self-approved prs if the author and merger are the same, and there are no other reviews after excluding reviews by the pr author.
+            reviews = pr.get("reviews", {}).get("nodes", [])
+            reviews = list(filter(lambda r: get_login(r.get("author")) != pr_author, reviews))
+            if len(reviews) == 0 and pr_author == merged_by:
+                self_approved_prs += 1
+            else:
+                approved_prs += 1
 
 # prep. data for Chart.js
 labels_authors = list(all_authors.keys())
