@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Commit Analytics</title>
+    <!-- Include Chart.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <div style="width: 80%; margin: 20px auto">
+      <h1>Commit Analytics</h1>
+
+      <h2>Commit Counts per Author</h2>
+      <canvas id="commitChart"></canvas>
+
+      <h2>Most Frequent Commit Dates</h2>
+      <canvas id="commonDatesChart"></canvas>
+
+      <h2>Year-wise Commit Counts</h2>
+      <canvas id="yearwiseChart"></canvas>
+
+      <h2>Month-wise Commit Counts</h2>
+      <canvas id="monthwiseChart"></canvas>
+
+      <h2>Day-wise Commit Counts</h2>
+      <canvas id="daywiseChart"></canvas>
+
+      <h2>PRs per Author</h2>
+      <canvas id="prsPerAuthorChart"></canvas>
+
+      <h2>Status Distribution of PRs</h2>
+      <canvas id="statusDistributionChart"></canvas>
+
+      <h2>PRs Approval Status</h2>
+      <canvas id="prApprovalChart"></canvas>
+      <p id="commitsWithApprovals"></p>
+      <p id="commitsWithoutApprovals"></p>
+
+      <p id="mergeTime"></p>
+      <p id="reviewComments"></p>
+    </div>
+
+    <script src="chart_data.js"></script>
+    <script>
+      // Chart 1: Commit Counts per Author
+      var ctx1 = document.getElementById("commitChart").getContext("2d");
+      var commitChart = new Chart(ctx1, {
+        type: "bar",
+        data: {
+          labels: labels_authors,
+          datasets: [
+            {
+              label: "Commit Counts per Author",
+              data: data_authors,
+              backgroundColor: "rgba(54, 162, 235, 0.5)",
+              borderColor: "rgba(54, 162, 235, 1)",
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              type: "logarithmic", // Use a logarithmic scale
+              min: 1, // Set a minimum value for the y-axis
+            },
+          },
+        },
+      });
+      // Chart 2: Most Frequent Commit Dates
+      var ctx2 = document.getElementById("commonDatesChart").getContext("2d");
+      var commonDatesChart = new Chart(ctx2, {
+        type: "bar",
+        data: {
+          labels: common_dates,
+          datasets: [
+            {
+              label: "Commit Counts on Common Dates",
+              data: common_dates_counts,
+              backgroundColor: "rgba(255, 99, 132, 0.5)",
+              borderColor: "rgba(255, 99, 132, 1)",
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+            },
+          },
+        },
+      });
+
+      // Chart 3: Year-wise Commit Counts
+      var ctx3 = document.getElementById("yearwiseChart").getContext("2d");
+      var yearwiseChart = new Chart(ctx3, {
+        type: "bar",
+        data: {
+          labels: years,
+          datasets: [
+            {
+              label: "Commit Counts by Year",
+              data: data_years,
+              backgroundColor: "rgba(255, 159, 64, 0.5)",
+              borderColor: "rgba(255, 159, 64, 1)",
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+            },
+          },
+        },
+      });
+
+      // Chart 4: Month-wise Commit Counts
+      var ctx4 = document.getElementById("monthwiseChart").getContext("2d");
+      var monthwiseChart = new Chart(ctx4, {
+        type: "bar",
+        data: {
+          labels: months,
+          datasets: [
+            {
+              label: "Commit Counts by Month",
+              data: data_months,
+              backgroundColor: "rgba(153, 102, 255, 0.5)",
+              borderColor: "rgba(153, 102, 255, 1)",
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+            },
+          },
+        },
+      });
+
+      // Chart 5: Day-wise Commit Counts
+      var ctx5 = document.getElementById("daywiseChart").getContext("2d");
+      var daywiseChart = new Chart(ctx5, {
+        type: "bar",
+        data: {
+          labels: days,
+          datasets: [
+            {
+              label: "Commit Counts by Day",
+              data: data_days,
+              backgroundColor: "rgba(75, 192, 192, 0.5)",
+              borderColor: "rgba(75, 192, 192, 1)",
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+            },
+          },
+        },
+      });
+
+      // Chart 6: PRs per Author
+      var ctx6 = document.getElementById("prsPerAuthorChart").getContext("2d");
+      var prsPerAuthorChart = new Chart(ctx6, {
+        type: "bar",
+        data: {
+          labels: labels_pr_authors,
+          datasets: [
+            {
+              label: "PRs per Author",
+              data: data_pr_authors,
+              backgroundColor: "rgba(255, 206, 86, 0.5)",
+              borderColor: "rgba(255, 206, 86, 1)",
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              type: "logarithmic",
+              beginAtZero: true,
+            },
+          },
+        },
+      });
+
+      // Chart 7: Status Distribution of PRs
+      var ctx7 = document
+        .getElementById("statusDistributionChart")
+        .getContext("2d");
+      var statusDistributionChart = new Chart(ctx7, {
+        type: "bar",
+        data: {
+          labels: labels_statuses,
+          datasets: [
+            {
+              label: "Status Distribution of PRs",
+              data: data_statuses,
+              backgroundColor: [
+                "rgba(255, 99, 132, 0.5)",
+                "rgba(54, 162, 235, 0.5)",
+                "rgba(255, 206, 86, 0.5)",
+              ],
+              borderColor: [
+                "rgba(255, 99, 132, 1)",
+                "rgba(54, 162, 235, 1)",
+                "rgba(255, 206, 86, 1)",
+              ],
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+            },
+          },
+        },
+      });
+
+      // Chart 8: PRs Approval Status
+      var ctx8 = document.getElementById("prApprovalChart").getContext("2d");
+      var prApprovalChart = new Chart(ctx8, {
+        type: "pie",
+        data: {
+          labels: labels_pr_approval,
+          datasets: [
+            {
+              label: "PRs Approval Status",
+              data: data_pr_approval,
+              backgroundColor: [
+                "rgba(255, 99, 132, 0.5)",
+                "rgba(54, 162, 235, 0.5)",
+              ],
+              borderColor: ["rgba(255, 99, 132, 1)", "rgba(54, 162, 235, 1)"],
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+            },
+          },
+        },
+      });
+
+      // average time taken to merge PRs
+      document.getElementById(
+        "mergeTime",
+      ).innerText = `Average Merge Time: ${average_merge_time.toFixed(
+        2,
+      )} hours`;
+
+      // average review comments per PR
+      document.getElementById(
+        "reviewComments",
+      ).innerText = `Average Review Comments per PR: ${average_review_comments.toFixed(
+        2,
+      )}`;
+
+      // commit counts with and without approvals
+      document.getElementById(
+        "commitsWithApprovals",
+      ).innerText = `Commits with PR Approvals: ${commits_with_approvals}`;
+      document.getElementById(
+        "commitsWithoutApprovals",
+      ).innerText = `Commits without PR Approvals: ${commits_without_approvals}`;
+    </script>
+  </body>
+</html>
