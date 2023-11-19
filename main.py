@@ -23,7 +23,7 @@ def get_login(value):
         return None
     return value.get("login")
 
-for file_path in glob.glob(os.path.join(data_directory, "*.json")):
+for file_path in glob.glob(os.path.join(data_directory, "raw_*.json")):
     json_data = None
 
     with open(file_path, "r") as file:
