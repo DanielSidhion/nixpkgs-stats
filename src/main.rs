@@ -127,8 +127,17 @@ async fn main() -> anyhow::Result<()> {
     let mut latest_cursor: Option<String> = None;
 
     loop {
+        if !matches!(
+            shutdown_rx.try_recv(),
+            Err(oneshot::error::TryRecvError::Empty),
+        ) {
+            // If we're here, it means we either got a ctrl+c signal or the channel dropped, in which case we're not listening for ctrl+c anymore, so let's just save and exit.
+            data_state.save_curr_pack()?;
+            break;
+        }
+
         let query_variables = commit_stats::Variables {
-            num_commits: 40,
+            num_commits: 30,
             next_page_cursor: latest_cursor.clone(),
             since: None,
             // since: data_state
@@ -184,13 +193,7 @@ async fn main() -> anyhow::Result<()> {
             data_state.add_commit(commit)?;
         }
 
-        if !has_next_page
-            || !matches!(
-                shutdown_rx.try_recv(),
-                Err(oneshot::error::TryRecvError::Empty),
-            )
-        {
-            // In case we're here because the `try_recv()` call didn't tell us the channel was empty, it means we either got a ctrl+c signal or the channel dropped, in which case we're not listening for ctrl+c anymore, so let's just save and exit.
+        if !has_next_page {
             data_state.save_curr_pack()?;
             break;
         } else {
