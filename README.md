@@ -1,0 +1,1 @@
+This repository uses [Git LFS](https://git-lfs.com/). Make sure you use [direnv](https://direnv.net/), the nix dev shell included in this repo, or that you have Git LFS installed through some other means.
