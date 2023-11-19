@@ -18,10 +18,12 @@ review_comments_count = []
 approved_prs = 0  # PRs with approvals from others
 self_approved_prs = 0  # Self-approved PRs
 
+
 def get_login(value):
     if value is None:
         return None
     return value.get("login")
+
 
 for file_path in glob.glob(os.path.join(data_directory, "*.json")):
     json_data = None
@@ -32,11 +34,11 @@ for file_path in glob.glob(os.path.join(data_directory, "*.json")):
         except (json.JSONDecodeError, KeyError) as e:
             print(f"Error parsing {file_path}: {e}")
             continue
-    
+
     if json_data is None:
         print(f"Parsed {file_path}, but got nothing.")
         continue
-        
+
     for commit in json_data:
         authors = commit.get("authors", {}).get("nodes", [])
         for author in authors:
@@ -65,10 +67,12 @@ for file_path in glob.glob(os.path.join(data_directory, "*.json")):
                 created_at = datetime.fromisoformat(pr.get("createdAt"))
                 merged_at = datetime.fromisoformat(pr.get("mergedAt"))
                 merge_time.append((merged_at - created_at).total_seconds() / 3600)
-            
+
             # Only consider self-approved prs if the author and merger are the same, and there are no other reviews after excluding reviews by the pr author.
             reviews = pr.get("reviews", {}).get("nodes", [])
-            reviews = list(filter(lambda r: get_login(r.get("author")) != pr_author, reviews))
+            reviews = list(
+                filter(lambda r: get_login(r.get("author")) != pr_author, reviews)
+            )
             if len(reviews) == 0 and pr_author == merged_by:
                 self_approved_prs += 1
             else:
@@ -134,23 +138,30 @@ years = sorted(yearwise_commit_counts.keys())
 data_years = [yearwise_commit_counts[year] for year in years]
 
 
-# construct chartjs data
+# collect a dictinary of data that we want to use in charts
+variables = {
+    "labels_authors": labels_authors,
+    "data_authors": data_authors,
+    "common_dates": common_dates,
+    "common_dates_counts": common_dates_counts,
+    "days": days,
+    "data_days": data_days,
+    "months": months,
+    "data_months": data_months,
+    "labels_pr_authors": labels_pr_authors,
+    "data_pr_authors": data_pr_authors,
+    "labels_statuses": labels_statuses,
+    "data_statuses": data_statuses,
+    "average_merge_time": average_merge_time,
+    "average_review_comments": average_review_comments,
+    "labels_pr_approval": labels_pr_approval,
+    "data_pr_approval": data_pr_approval,
+    "years": years,
+    "data_years": data_years,
+}
+
+# iterate over the chart data dictionary and write it to a js file
+# for charts.js to read
 with open("chart_data.js", "w") as js_file:
-    js_file.write(f"const labels_authors = {json.dumps(labels_authors)};\n")
-    js_file.write(f"const data_authors = {json.dumps(data_authors)};\n")
-    js_file.write(f"const common_dates = {json.dumps(common_dates)};\n")
-    js_file.write(f"const common_dates_counts = {json.dumps(common_dates_counts)};\n")
-    js_file.write(f"const days = {json.dumps(days)};\n")
-    js_file.write(f"const data_days = {json.dumps(data_days)};\n")
-    js_file.write(f"const months = {json.dumps(months)};\n")
-    js_file.write(f"const data_months = {json.dumps(data_months)};\n")
-    js_file.write(f"const labels_pr_authors = {json.dumps(labels_pr_authors)};\n")
-    js_file.write(f"const data_pr_authors = {json.dumps(data_pr_authors)};\n")
-    js_file.write(f"const labels_statuses = {json.dumps(labels_statuses)};\n")
-    js_file.write(f"const data_statuses = {json.dumps(data_statuses)};\n")
-    js_file.write(f"const average_merge_time = {average_merge_time};\n")
-    js_file.write(f"const average_review_comments = {average_review_comments};\n")
-    js_file.write(f"const labels_pr_approval = {json.dumps(labels_pr_approval)};\n")
-    js_file.write(f"const data_pr_approval = {json.dumps(data_pr_approval)};\n")
-    js_file.write(f"const years = {json.dumps(years)};\n")
-    js_file.write(f"const data_years = {json.dumps(data_years)};\n")
+    for var_name, value in variables.items():
+        js_file.write(f"const {var_name} = {json.dumps(value)};\n")
