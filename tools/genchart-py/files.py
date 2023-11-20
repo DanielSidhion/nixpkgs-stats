@@ -2,7 +2,7 @@ import glob
 import os
 import json
 from typing import List, Dict
-from processFiles import CommitData
+from process_files import CommitData
 
 DATA_DIRECTORY = "data"
 
