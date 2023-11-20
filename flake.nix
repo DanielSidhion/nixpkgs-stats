@@ -24,74 +24,82 @@
     };
   };
 
-  outputs = { self, nixpkgs, advisory-db, crane, nil, rust-overlay, ... }:
-    let
-      system = "x86_64-linux";
-      overlays = [ (import rust-overlay) ];
-      pkgs = import nixpkgs {
-        inherit system overlays;
-      };
+  outputs = {
+    self,
+    nixpkgs,
+    advisory-db,
+    crane,
+    nil,
+    rust-overlay,
+    ...
+  }: let
+    system = "x86_64-linux";
+    overlays = [(import rust-overlay)];
+    pkgs = import nixpkgs {
+      inherit system overlays;
+    };
 
-      rustToolchain = pkgs.rust-bin.stable.latest.default.override {
-        targets = [ "x86_64-unknown-linux-musl" ];
-      };
+    rustToolchain = pkgs.rust-bin.stable.latest.default.override {
+      targets = ["x86_64-unknown-linux-musl"];
+    };
 
-      craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
+    craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
 
-      src = pkgs.lib.cleanSourceWith {
-        src = craneLib.path ./.;
-        filter = path: type: (builtins.match ".*graphql$" path != null) || (craneLib.filterCargoSources path type);
-      };
+    src = pkgs.lib.cleanSourceWith {
+      src = craneLib.path ./tools/nixpkgs-stats;
+      filter = path: type: (builtins.match ".*graphql$" path != null) || (craneLib.filterCargoSources path type);
+    };
 
-      commonArgs = {
-        inherit src;
+    commonArgs = {
+      inherit src;
 
-        strictDeps = true;
-        buildInputs = [ ];
+      strictDeps = true;
+      buildInputs = [];
 
-        CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
-        CARGO_BUILD_RUSTFLAGS = "-C target-feature=+crt-static";
-      };
+      CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
+      CARGO_BUILD_RUSTFLAGS = "-C target-feature=+crt-static";
+    };
 
-      cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+    cargoArtifacts = craneLib.buildDepsOnly commonArgs;
 
-      myCrate = craneLib.buildPackage (commonArgs // {
+    myCrate = craneLib.buildPackage (commonArgs
+      // {
         inherit cargoArtifacts;
       });
-    in
-    {
-      devShells."${system}".default = pkgs.mkShell {
-        buildInputs = with pkgs; [
-          git
-          git-lfs
+  in {
+    devShells."${system}".default = pkgs.mkShell {
+      buildInputs = with pkgs; [
+        git
+        git-lfs
 
-          rustToolchain
+        rustToolchain
 
-          graphql-client
+        graphql-client
 
-          nixpkgs-fmt
-          nil.packages.${system}.default
-        ];
+        nixpkgs-fmt
+        nil.packages.${system}.default
+      ];
 
-        RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
-      };
+      RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
+    };
 
-      checks.${system} = {
-        inherit myCrate;
+    checks.${system} = {
+      inherit myCrate;
 
-        myCrateClippy = craneLib.cargoClippy (commonArgs // {
+      myCrateClippy = craneLib.cargoClippy (commonArgs
+        // {
           inherit cargoArtifacts;
         });
 
-        my-crate-fmt = craneLib.cargoFmt {
-          inherit src;
-        };
-
-        my-crate-audit = craneLib.cargoAudit {
-          inherit src advisory-db;
-        };
+      my-crate-fmt = craneLib.cargoFmt {
+        inherit src;
       };
 
-      packages.${system}.default = myCrate;
+      my-crate-audit = craneLib.cargoAudit {
+        inherit src advisory-db;
+      };
     };
+
+    packages.${system}.default = myCrate;
+  };
 }
